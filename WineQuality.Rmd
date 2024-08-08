@@ -1,30 +1,31 @@
 ---
-title: "Understanding Wine Quality Data with R"
-author: "Alexandra Neff"
+title: "Understanding the Quality of Wine Revealed In Chemistry"
+# author: "Alexandra Neff"
+author: "Iris Cannary"
 date: "`r Sys.Date()`"
 output: pdf_document
+
+abstract: "asdf"
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Introduction
+The quality of wine can be mystifying despite being of central importance to the practice of making it.  However, that quality may be no enigma whatsoever for vintners and sommeliers, whose professions require diverse experience with and deep understanding of wine; and the well-to-do, whose means allow them to have similarly diverse experiences with the potation and the social impetus to seek wines of the highest perceived quality.
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Vintners seek to acquire a map to lead their grapes to becoming the most sought-after wines on the market.  Wine consumers, like society as a whole, highly value wine as a social drink and a quenching garnish to their meals, and because of that value system pursue ever more pleasing and compatible wines.  The most wealthy and high-status of these consumers add to that system the use of the most valuable wines as markers of their wealth and status—consider the banker in the film *The Big Short* asking a colleague "What's with the Dom?", referring to a celebration of a lucrative deal with the famously expensive champagne Dom Pérignon.  One may also consider the scene in the limited series *Anatomy of A Scandal* during which a collegiate social club of aristocratic young men launch into a boisterous chant about wasting "Bolly", referring to the similarly expensive Bollinger.  Sommeliers, then, have a reputation and business liasonship to maintain as middleperson to the enterprising vintners pursuing firm and lasting footing in the market and the diverse and eager consumers pursuing the best wines they can acquire.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+In this study, we aim to leverage the statistical sciences to uncover just *how* a wine, on account of its constituent substances and their combination, achieves a particular level of quality.  As society continues its long march from a worldview grounded in religion, myth, and superstition to one built on a fundament of science, the work achieved by this study offers a valuable transition of the basis of wine quality from a subjective realm to an objective one.  Foremost among the practical benefits to this are the improved cost efficiency for vintners to adjust their grape growing and winemaking techniques and the bolstered confidence of the consumer when choosing a wine.
 
-```{r cars}
-summary(cars)
-```
+## Context
 
-## Including Plots
 
-You can also embed plots, for example:
+## Analysis: Data Preparation and EDA
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Analysis: Identifying & Predicting Relationships
+
+
+## Conclusion
