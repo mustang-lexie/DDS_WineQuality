@@ -12,6 +12,7 @@ abstract: "asdf"
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
+require(brant)
 require(dplyr)
 require(foreign)
 require(ggplot2)
@@ -79,7 +80,7 @@ unique(testFull[["location"]])
 
 # remove outliers
 # code in this section derived from Bobbitt 2020
-outliers <- function(x) {
+detect_outliers_1 <- function(x) {
 
   Q1 <- quantile(x, probs=.25)
   Q3 <- quantile(x, probs=.75)
@@ -91,19 +92,42 @@ outliers <- function(x) {
  x > upper_limit | x < lower_limit
 }
 
-remove_outliers <- function(df, cols = names(df)) {
+remove_outliers_1 <- function(df, cols = names(df)) {
   for (col in cols) {
-    df <- df[!outliers(df[[col]]),]
+    df <- df[!detect_outliers_1(df[[col]]),]
   }
-  #df
 }
 
-remove_outliers(trainFull, c("fixed.acidity","volatile.acidity","citric.acid","residual.sugar","chlorides","free.sulfur.dioxide","total.sulfur.dioxide","density","pH","sulphates","alcohol"))
+remove_outliers_1(trainFull, c("fixed.acidity","volatile.acidity","citric.acid","residual.sugar","chlorides","free.sulfur.dioxide","total.sulfur.dioxide","density","pH","sulphates","alcohol"))
 ```
-It appears that no outliers have been removed.  I am unsure if this is a result of ineffectual code or the fact that none of the values that looked like outliers in the plots actually fit the definition.  I may return to this later.
+It appears that no outliers have been removed.  It is unclear if this is a result of ineffectual code or the fact that none of the values that looked like outliers in the plots actually fit the definition.  This may warrant further inspection.
+
+If indeed there are no outliers per the 1.5•IQR definition, then the data is now clean, having had the locations standardized and being show to have no NA/null values.  We may proceed to exploring a suitable model and checking that the data satisfies the model's assumptions.
 
 ## Analysis: Identifying & Predicting Relationships
 
+The ideal model to analyze this data, with the goal of predicting a whole number level from 0 to 10 in strictly an order of least to largest number value, is an ordinal regression, variably known as ordinal logistic regression or ordered logit regression.
+
+An ordinal logistical regression model can take explanatory variables of types including "continuous, categorical, or ordinal"[@standys]; this is one of the model's assumptions.
+
+The model also assumes that (paraphrased from St. Andrews PDF on Ordinal Regression):
+1. *The dependent (target) variable is ordinal:* this is **satisfied**, with possible levels 0 to 10 in whole number steps, ordered from lowest, 0; to highest, 10.
+2. *At least one of the independent (explanatory) variables is/are categorical, or continuous, or also ordinal:* this is **satisfied** by the two categoricals, location and type; and the eleven continuously numeric measures of chemical properties.
+3. *There must be no multicollinearity:* this can be checked by creating a correlation matrix upon the explanatory variables.
+4. *Proportional Odds are assumed:* this can be checked once the model has been run by using the "brant" package.
+
+```{r}
+# Correlation Matrix
+# code in this section derived from GeeksforGeeks 2022
+corr_mat <- round(cor(trainFull[,2:12]),2)
+
+melted_corr_mat <- melt(corr_mat)
+#head(melted_corr_mat)
+
+ggplot(data = melted_corr_mat, aes(x=Var1, y=Var2, fill=value)) + 
+  geom_tile() + 
+  geom_text(aes(Var2, Var1, label = value), color = "black", size = 4)
+```
 
 ## Revelations
 
