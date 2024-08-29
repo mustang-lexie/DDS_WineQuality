@@ -5,6 +5,7 @@ author: "Iris Cannary"
 date: "`r Sys.Date()`"
 output: pdf_document
 bibliography: sources.bib
+nocite: "@*"
 
 abstract: "asdf"
 ---
@@ -18,12 +19,16 @@ require(foreign)
 require(ggplot2)
 require(Hmisc)
 require(MASS)
+require(Metrics)
 require(reshape2)
 require(rstatix)
+require(scales)
 require(tidyverse)
+```
 
-trainFull <- read.csv("data/Wine Train Set.csv")
-testFull <- read.csv("data/Wine Test Set.csv")
+```{r dataImport, include=FALSE}
+trainFull <- read.csv("data/WineTrainSet.csv")
+testFull <- read.csv("data/WineTestSet.csv")
 ```
 
 # Context
@@ -78,31 +83,50 @@ testFull$location[testFull$location == "Califormia"] <- "California"
 unique(trainFull[["location"]])
 unique(testFull[["location"]])
 
-# remove outliers
-# code in this section derived from Bobbitt 2020
-detect_outliers_1 <- function(x) {
+# change data types of categoricals and ordinal response to factor
+trainFull$type <- as.factor(trainFull$type)
+trainFull$location <- as.factor(trainFull$location)
+trainFull$quality <- factor(trainFull$quality, c(0,1,2,3,4,5,6,7,8,9,10), ordered = TRUE)
 
-  Q1 <- quantile(x, probs=.25)
-  Q3 <- quantile(x, probs=.75)
-  iqr = Q3-Q1
+testFull$type <- as.factor(testFull$type)
+testFull$location <- as.factor(testFull$location)
 
- upper_limit = Q3 + (iqr*1.5)
- lower_limit = Q1 - (iqr*1.5)
+# scale numerics
+# For some reason lapply refused to do its job. We'll do it the hard way!
+# ALSO NOTE: Range of (0,8) selected by trial-&-error
+trainFull$fixed.acidity <- rescale(trainFull$fixed.acidity, to = c(0,8))
+trainFull$volatile.acidity <- rescale(trainFull$volatile.acidity, to = c(0,8))
+trainFull$citric.acid <- rescale(trainFull$citric.acid, to = c(0,8))
+trainFull$residual.sugar <- rescale(trainFull$residual.sugar, to = c(0,8))
+trainFull$chlorides <- rescale(trainFull$chlorides, to = c(0,8))
+trainFull$free.sulfur.dioxide <- rescale(trainFull$free.sulfur.dioxide, to = c(0,8))
+trainFull$total.sulfur.dioxide <- rescale(trainFull$total.sulfur.dioxide, to = c(0,8))
+trainFull$density <- rescale(trainFull$density, to = c(0,8))
+trainFull$pH <- rescale(trainFull$pH, to = c(0,8))
+trainFull$sulphates <- rescale(trainFull$sulphates, to = c(0,8))
+trainFull$alcohol <- rescale(trainFull$alcohol, to = c(0,8))
 
- x > upper_limit | x < lower_limit
-}
-
-remove_outliers_1 <- function(df, cols = names(df)) {
-  for (col in cols) {
-    df <- df[!detect_outliers_1(df[[col]]),]
-  }
-}
-
-remove_outliers_1(trainFull, c("fixed.acidity","volatile.acidity","citric.acid","residual.sugar","chlorides","free.sulfur.dioxide","total.sulfur.dioxide","density","pH","sulphates","alcohol"))
+testFull$fixed.acidity <- rescale(testFull$fixed.acidity, to = c(0,8))
+testFull$volatile.acidity <- rescale(testFull$volatile.acidity, to = c(0,8))
+testFull$citric.acid <- rescale(testFull$citric.acid, to = c(0,8))
+testFull$residual.sugar <- rescale(testFull$residual.sugar, to = c(0,8))
+testFull$chlorides <- rescale(testFull$chlorides, to = c(0,8))
+testFull$free.sulfur.dioxide <- rescale(testFull$free.sulfur.dioxide, to = c(0,8))
+testFull$total.sulfur.dioxide <- rescale(testFull$total.sulfur.dioxide, to = c(0,8))
+testFull$density <- rescale(testFull$density, to = c(0,8))
+testFull$pH <- rescale(testFull$pH, to = c(0,8))
+testFull$sulphates <- rescale(testFull$sulphates, to = c(0,8))
+testFull$alcohol <- rescale(testFull$alcohol, to = c(0,8))
 ```
 It appears that no outliers have been removed.  It is unclear if this is a result of ineffectual code or the fact that none of the values that looked like outliers in the plots actually fit the definition.  This may warrant further inspection.
 
-If indeed there are no outliers per the 1.5•IQR definition, then the data is now clean, having had the locations standardized and being shown to have no NA/null values.  We may proceed to exploring a suitable model and checking that the data satisfies the model's assumptions.
+If indeed there are no outliers per the 1.5•IQR definition, then the data is now clean, having had the locations standardized to the correct spellings, numeric attributes scaled, response factor made ordinal, and NA/null values shown to be absent.  We may proceed to exploring a suitable model and checking that the data satisfies the model's assumptions.
+
+It must also be noted that the choice of scaling range of (0, 8) was selected by trial-and-error with the modeling stage as a workability test—the model on unscaled data produced a number of NaNs in the t values of several intercepts and elsewhere; we initially tried scaling to (0, 10) to match the range of the response variable.  NaNs were avoided upon setting the scaling range to (0, 8); upper bounds of five and nine were attempted but the highest NaN-free value was chosen to keep the information embedded in the numerical data from being buried in however R approaches rounding in the course of performing the `rescale()` function.
+
+Scaling can also have the effect of reducing the effects of outliers, but because all the rest of the data distribution is subjected to the same scale, the effect could be expected to reduce in parallel to the effect of the rest of the data on the model.
+
+With consideration given to the accuracy of the zeroth model (all explanatory variables included) which we find in the Model Tuning Phase—in the second subsection of the Analysis section—any exclusion of outliers may actually hinder the model.  If we assume, for the sake of making the argument, that the Test Data we wish to predict has the same distributions of the attributes' values as the Training Data (and it should, unless the splitting process was done improperly), removing the outliers, and thus removing records, could both remove data that uniquely shapes the model as well as lower the resolution of the information carried in full by the Training Data in its 5,463-record glory.  Because the data we send into the modeling function is standardized in range, we consider that sufficient to corral the mathematical effect of outliers, particularly those in attributes of outsize ranges, on the distance function aspect of the algorithm(s) used—and we consider the ~6% error rate of our model sufficiently convincing apropos of this decision.
 
 # Analysis: Identifying & Predicting Relationships
 
@@ -131,7 +155,7 @@ ggplot(data = melted_corr_mat, aes(x=Var1, y=Var2, fill=value)) +
   geom_text(aes(Var2, Var1, label = value), color = "black", size = 4)
 ```
 
-We can see from the correlation matrix that there is no multicollinearity; no variable shows significant correlation with any other variable aside from itself.  We can now proceed to the modeling phase of our analysis; when this is complete, the model may be assessed for proportional odds.
+We can see from the correlation matrix that there is no multicollinearity; no variable shows significant correlation with any other variable aside from itself.  The most significant correlation we can see is an inverse correlation between density and alcohol; this makes plenty of sense considering that ethanol alcohol's density is 79% of water's—as the alcohol in solution increases, the density of the solution decreases[@illinois].  We can now proceed to the modeling phase of our analysis; when this is complete, the model may be assessed for proportional odds.
 
 ### Preparing the Data and Applying the Model to the Split Training Data
 
@@ -146,9 +170,54 @@ set.seed(1)
 tune.train <- trainFull %>% dplyr::sample_frac(0.70)
 tune.test  <- dplyr::anti_join(trainFull, tune.train, by = 'ID')
 
-# train model
+# train model, predict, calculate MAE
+fit.wine.tune.0 <- polr(formula = quality ~ fixed.acidity + volatile.acidity + citric.acid + residual.sugar + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + density + pH + sulphates + alcohol + type + location, data = tune.train, Hess = T)
+predict.wine.tune.0 <- predict(fit.wine.tune.0, newdata = tune.test, type = "class")
 
+summary(fit.wine.tune.0)
+summary(predict.wine.tune.0)
 
+mae.wine.0 <- mae(actual = as.numeric(tune.test$quality), predicted = as.numeric(predict.wine.tune.0))
+mape.wine.0 <- mape(actual = as.numeric(tune.test$quality), predicted = as.numeric(predict.wine.tune.0))
+mae.wine.0
+mape.wine.0*100
+```
+
+We can see from the MAPE (Mean Absolute Percent Error) that our model in its raw state, taking all variables as inputs, is very accurate.  Here we are using MAPE to quantify the accuracy of the predictions independent of scale; the MAPE value of 6.22% is the rate of incorrect predictions—ergo, the model is ~93.78% accurate.  From the logic that all of the measurements included in the data have a real, physical or chemical relationship to the material—wine—being studied, we can conject that this model is the most realistic in terms of those real-world mechanisms.  However, it is of interest if the model could be more accurate with only several of the most significant variables considered; we are, after all, studying the relationship between the physical and chemical properties of the material—highly objective measurements—and the tongues of the sommeliers who rated the wines—a very subjective source of information.  There are chemical compounds that have no flavor and/or no texture (in terms of mouthfeel); perhaps citric acid, despite its fame as a component of the distinctly tart flavors of citrus fruits, has little effect on the overall quality of flavor of a wine.  Apropos of the effects of acids on taste and mouthfeel, it is of some interest that the data contains no measure of tannins, the principal source of the astringent mouthfeel of some wines, especially red wines, which differ from whites in the brewing process in that the juice is allowed to ferment with the grapes' seeds and skins immersed [@7c].  This analysis would be well worth the revision if new data containing  measures of tannins were to become available.
+
+We will explore a model using only the five most significant variables according to t-value in the first model, and see if this improves the MAPE at all.  The models are refered to by number as the zeroth model, the untuned form; and the first [tuned] model.
+
+```{r}
+# Re-model with only the five most significant variables
+fit.wine.tune.1 <- polr(formula = quality ~ volatile.acidity + residual.sugar + density + sulphates + location, data = tune.train, Hess = T)
+predict.wine.tune.1 <- predict(fit.wine.tune.1, newdata = tune.test, type = "class")
+
+summary(fit.wine.tune.1)
+summary(predict.wine.tune.1)
+
+mae.wine.1 <- mae(actual = as.numeric(tune.test$quality), predicted = as.numeric(predict.wine.tune.1))
+mape.wine.1 <- mape(actual = as.numeric(tune.test$quality), predicted = as.numeric(predict.wine.tune.1))
+mae.wine.1
+mape.wine.1*100
+
+# Difference MAPE.0 minus MAPE.1, positive value indicates increase in accuracy (decreased error in first tuned model).
+(mape.wine.0*100-mape.wine.1*100)
+```
+
+The first tuned model is marginally worse in MAPE and worse in AIC as well.  Since there doesn't seem to be any any cutoff point in t-value for the variable coefficients, we don't have a good reason to exclude any of the variables.  We find the accuracy of the initial model to be satisfactory.  Now, we can train the model anew on the full Training Data and export the predictions to a CSV file for submission to the commissioners of this study.
+
+```{r}
+# Train model on full Training Data
+fit.wine <- polr(formula = quality ~ fixed.acidity + volatile.acidity + citric.acid + residual.sugar + chlorides + free.sulfur.dioxide + total.sulfur.dioxide + density + pH + sulphates + alcohol + type + location, data = trainFull, Hess = T)
+predict.wine <- predict(fit.wine, newdata = testFull, type = "class")
+head(predict.wine)
+```
+
+```{r}
+# Export model's predictions for Test Data to CSV file
+predictions.wine <- data.frame(testFull$ID, predict.wine)
+colnames(predictions.wine) <- c("ID","quality")
+write.csv(predictions.wine, file = "results/WineQualityPredictions.csv", row.names = FALSE)
 ```
 
 # Revelations
